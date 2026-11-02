@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>喝水打卡</title>
+<meta name="theme-color" content="#2b8cdb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="喝水打卡">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root{--b:#2b8cdb;--bl:#e6f2fc;--t:#1d2b36;--m:#6b7c8a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;background:#f5f9fc;color:var(--t);padding:env(safe-area-inset-top) 16px calc(24px + env(safe-area-inset-bottom))}
+.wrap{max-width:440px;margin:0 auto}
+h1{font-size:20px;text-align:center;margin:18px 0 4px}
+.sub{text-align:center;color:var(--m);font-size:13px;margin-bottom:10px}
+.ring{position:relative;width:220px;height:220px;margin:8px auto}
+.ring svg{transform:rotate(-90deg)}
+.ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.big{font-size:52px;font-weight:700;color:var(--b);line-height:1}
+.small{font-size:14px;color:var(--m);margin-top:6px}
+button{font-family:inherit}
+#drink{display:block;width:100%;padding:22px;font-size:24px;font-weight:700;border:0;border-radius:18px;background:var(--b);color:#fff;box-shadow:0 6px 18px rgba(43,140,219,.35)}
+#drink:active{transform:scale(.98)}
+.row{display:flex;justify-content:space-between;align-items:center;margin:12px 4px;color:var(--m);font-size:14px}
+#undo{background:none;border:1px solid #c9d6e0;border-radius:10px;padding:6px 12px;color:var(--m);font-size:14px}
+.card{background:#fff;border-radius:16px;padding:14px 16px;margin:14px 0;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.card h2{font-size:16px;margin:0 0 10px}
+.chart{display:flex;align-items:flex-end;gap:8px;height:110px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:11px;color:var(--m)}
+.bar i{display:block;width:100%;background:var(--bl);border-radius:6px 6px 0 0;min-height:3px}
+.bar i.ok{background:var(--b)}
+.bar b{font-weight:500;color:var(--t);margin-bottom:2px}
+details summary{cursor:pointer;font-weight:600}
+ol{padding-left:20px;line-height:1.7;font-size:14px}
+code{background:var(--bl);padding:1px 5px;border-radius:5px;word-break:break-all}
+a{color:var(--b)}
+.set{display:flex;gap:8px;align-items:center;font-size:14px}
+.set input{width:70px;padding:6px;font-size:16px;border:1px solid #c9d6e0;border-radius:8px}
+.set button{padding:7px 12px;border:0;border-radius:8px;background:var(--b);color:#fff;font-size:14px}
+#toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1 id="title">💧 今天喝水了吗</h1>
+<div class="sub" id="date"></div>
+<div class="ring">
+<svg width="220" height="220"><circle cx="110" cy="110" r="96" fill="none" stroke="#e6f2fc" stroke-width="16"/><circle id="arc" cx="110" cy="110" r="96" fill="none" stroke="#2b8cdb" stroke-width="16" stroke-linecap="round" stroke-dasharray="603.2" stroke-dashoffset="603.2" style="transition:stroke-dashoffset .5s"/></svg>
+<div class="c"><div class="big" id="count">0</div><div class="small" id="goalTxt">/ 8 杯</div><div class="small" id="remain"></div></div>
+</div>
+
+<div id="mainUI">
+<button id="drink">喝了一杯 🥤</button>
+<div class="row"><span id="last">今天还没喝</span><button id="undo">撤销上一杯</button></div>
+
+<div class="card"><h2>最近 7 天</h2><div class="chart" id="chart"></div></div>
+
+<div class="card"><h2>设置</h2>
+<div class="set">每日目标 <input id="goalIn" type="number" min="1" max="20" inputmode="numeric"> 杯（每杯约 250ml）<button id="saveGoal">保存</button></div>
+</div>
+
+<div class="card"><details><summary>首次设置：打开喝水提醒</summary>
+<ol>
+<li>在手机上安装 <b>ntfy</b> App：<a href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank">iPhone（App Store）</a> ／ <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank">安卓（Google Play）</a></li>
+<li>打开 ntfy，点右上角「＋」订阅主题，填入：<br><code id="pushTopic"></code><br>服务器保持默认 <code>ntfy.sh</code>。<br>（已装好 App 也可以直接点：<a id="deep" href="#">一键订阅</a>）</li>
+<li>系统询问时选择<b>允许通知</b>。</li>
+<li>在 Safari 里点「分享」→「添加到主屏幕」，以后从桌面图标打开本页打卡。</li>
+</ol>
+<p style="font-size:13px;color:#6b7c8a">白天 9:00–21:00，如果超过 2 小时没打卡，会收到一条提醒；当天喝够了就不再打扰。</p>
+</details></div>
+</div>
+
+<div id="viewUI" class="hide">
+<div class="row" style="justify-content:center"><span id="vlast">加载中…</span></div>
+<div class="card" style="font-size:13px;color:#6b7c8a">只读查看模式：显示最近 12 小时内的打卡记录，每分钟自动刷新。</div>
+</div>
+</div>
+<div id="toast"></div>
+
+<script>
+(function(){
+  var CHECKIN_TOPIC = "dw-chk-cddfd52ffae49d18";
+  var PUSH_TOPIC = "dw-push-068c731e0a179152";
+  var NTFY = "https://ntfy.sh/";
+  var KEY = "dw_v1";
+  var CIRC = 603.2;
+  var $ = function(id){ return document.getElementById(id); };
+
+  function dayKey(d){ d = d || new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function hm(ts){ var d = new Date(ts); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+  function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch(e){ return {}; } }
+  function save(s){ localStorage.setItem(KEY, JSON.stringify(s)); }
+  function toast(t){ var el=$("toast"); el.textContent=t; el.style.opacity=1; clearTimeout(toast._t); toast._t=setTimeout(function(){el.style.opacity=0;},1800); }
+
+  var S = load();
+  S.goal = S.goal || 8;
+  S.days = S.days || {};   // { "YYYY-MM-DD": [ts, ts, ...] }
+
+  function prune(){
+    var keep = {}, now = new Date();
+    for (var i=0;i<7;i++){ var d=new Date(now); d.setDate(now.getDate()-i); var k=dayKey(d); if(S.days[k]) keep[k]=S.days[k]; }
+    S.days = keep;
+  }
+  function today(){ var k=dayKey(); if(!S.days[k]) S.days[k]=[]; return S.days[k]; }
+
+  function renderRing(n, goal){
+    $("count").textContent = n;
+    $("goalTxt").textContent = "/ " + goal + " 杯";
+    var r = Math.max(goal-n,0);
+    $("remain").textContent = r>0 ? "还差 "+r+" 杯（约 "+(r*250)+"ml）" : "今天达标啦 🎉";
+    $("arc").style.strokeDashoffset = CIRC*(1-Math.min(n/goal,1));
+  }
+
+  function render(){
+    prune();
+    var t = today(), n = t.length;
+    $("date").textContent = new Date().toLocaleDateString("zh-CN",{month:"long",day:"numeric",weekday:"long"});
+    renderRing(n, S.goal);
+    $("last").textContent = n ? "上一杯："+hm(t[n-1]) : "今天还没喝";
+    $("undo").disabled = !n; $("undo").style.opacity = n?1:.4;
+    $("goalIn").value = S.goal;
+    var html = "", now = new Date();
+    for (var i=6;i>=0;i--){
+      var d=new Date(now); d.setDate(now.getDate()-i);
+      var c=(S.days[dayKey(d)]||[]).length, h=Math.min(c/S.goal,1)*100;
+      var lab = i===0 ? "今天" : "周"+"日一二三四五六"[d.getDay()];
+      html += '<div class="bar"><b>'+c+'</b><i class="'+(c>=S.goal?"ok":"")+'" style="height:'+h+'%"></i>'+lab+'</div>';
+    }
+    $("chart").innerHTML = html;
+    save(S);
+  }
+
+  function publish(n, kind){
+    try {
+      fetch(NTFY+CHECKIN_TOPIC, { method:"POST", body: JSON.stringify({t:kind, n:n, g:S.goal, ts:new Date().toISOString()}) }).catch(function(){});
+    } catch(e){}
+  }
+
+  function initMain(){
+    $("pushTopic").textContent = PUSH_TOPIC;
+    $("deep").href = "ntfy://ntfy.sh/" + PUSH_TOPIC;
+    $("drink").onclick = function(){
+      var t = today(); t.push(Date.now()); render(); publish(t.length, "drink");
+      var r = S.goal - t.length;
+      toast(r>0 ? "好棒！再喝 "+r+" 杯就达标" : (r===0 ? "今天达标啦 🎉" : "超额完成 💪"));
+      if (navigator.vibrate) navigator.vibrate(30);
+    };
+    $("undo").onclick = function(){
+      var t = today(); if(!t.length) return; t.pop(); render(); publish(t.length, "undo"); toast("已撤销一杯");
+    };
+    $("saveGoal").onclick = function(){
+      var g = parseInt($("goalIn").value,10);
+      if (!(g>=1 && g<=20)) { toast("请输入 1–20"); return; }
+      S.goal = g; render(); toast("目标已改为 "+g+" 杯");
+    };
+    render();
+    document.addEventListener("visibilitychange", function(){ if(!document.hidden) render(); });
+    setInterval(render, 60000);
+  }
+
+  function initView(){
+    $("mainUI").classList.add("hide"); $("viewUI").classList.remove("hide");
+    $("title").textContent = "💧 她今天喝水情况";
+    $("date").textContent = new Date().toLocaleDateString("zh-CN",{month:"long",day:"numeric",weekday:"long"});
+    function poll(){
+      fetch(NTFY+CHECKIN_TOPIC+"/json?poll=1&since=12h").then(function(r){ return r.text(); }).then(function(txt){
+        var last = null, tk = dayKey();
+        txt.split("\n").forEach(function(line){
+          if(!line.trim()) return;
+          try { var m = JSON.parse(line); if(m.event!=="message") return; var b = JSON.parse(m.message);
+            var ts = b.ts ? new Date(b.ts) : new Date(m.time*1000);
+            if (dayKey(ts)!==tk) return;
+            if (!last || ts>=last.ts) last = {ts:ts, n:b.n|0, g:b.g||8, t:b.t};
+          } catch(e){}
+        });
+        if (!last) { renderRing(0, 8); $("vlast").textContent = "最近 12 小时内今天还没有打卡记录"; return; }
+        renderRing(last.n, last.g);
+        $("vlast").textContent = "最近一次记录："+hm(last.ts)+(last.t==="undo"?"（撤销）":"");
+      }).catch(function(){ $("vlast").textContent = "读取失败，请稍后刷新"; });
+    }
+    poll(); setInterval(poll, 60000);
+  }
+
+  if (/[?&]view=1/.test(location.search)) initView(); else initMain();
+  if ("serviceWorker" in navigator && !/[?&]view=1/.test(location.search)) navigator.serviceWorker.register("sw.js").catch(function(){});
+})();
+</script>
+</body>
+</html>
