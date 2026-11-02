@@ -40,7 +40,7 @@ details summary{cursor:pointer;font-weight:600}
 ol{padding-left:20px;line-height:1.7;font-size:14px}
 code{background:var(--bl);padding:1px 5px;border-radius:5px;word-break:break-all}
 a{color:var(--b)}
-.set{display:flex;gap:8px;align-items:center;font-size:14px}
+.set{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px}.set button{white-space:nowrap;margin-left:auto}
 .set input{width:70px;padding:6px;font-size:16px;border:1px solid #c9d6e0;border-radius:8px}
 .set button{padding:7px 12px;border:0;border-radius:8px;background:var(--b);color:#fff;font-size:14px}
 #toast{position:fixed;left:50%;bottom:40px;transform:translateX(-50%);background:rgba(0,0,0,.75);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .3s;pointer-events:none}
@@ -63,7 +63,7 @@ a{color:var(--b)}
 <div class="card"><h2>最近 7 天</h2><div class="chart" id="chart"></div></div>
 
 <div class="card"><h2>设置</h2>
-<div class="set">每日目标 <input id="goalIn" type="number" min="1" max="20" inputmode="numeric"> 杯（每杯约 250ml）<button id="saveGoal">保存</button></div>
+<div class="set"><span style="white-space:nowrap">每日目标</span> <input id="goalIn" type="number" min="1" max="20" inputmode="numeric"> 杯（每杯约 250ml）<button id="saveGoal">保存</button></div>
 </div>
 
 <div class="card"><details><summary>首次设置：打开喝水提醒</summary>
